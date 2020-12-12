@@ -1,7 +1,9 @@
 import $ from "jquery";
 import CodeMirror from "codemirror/lib/codemirror";
 import "codemirror/lib/codemirror.css";
-
+import "codemirror/addon/hint/show-hint.css";
+import "codemirror/addon/hint/show-hint.js";
+import "codemirror/addon/hint/anyword-hint.js";
 // make CodeMirror public for loading additional themes
 if (typeof window !== "undefined") {
   window.CodeMirror = CodeMirror;
@@ -147,12 +149,24 @@ function getRenderers(options) {
 }
 // rendering cells
 
-function renderCell(element, options) {
+export function renderCell(element, options, id, onExecuteCell) {
   // render a single cell
   // element should be a `<pre>` tag with some code in it
   let mergedOptions = mergeOptions({ options });
-  let $cell = $("<div class='thebelab-cell'/>");
+
+  let $cell = $(`<div class='cell thebelab-cell' id= ${id}/>`);
   let $element = $(element);
+  let cell_type = $element.parent().data("cell-type");
+  // let solution_variable_name = $element.parent().data("solution_variable_name");
+  let question_series = $element.parent().data("question_series");
+  let cell_id = id.replace('python_editor_', '');
+  let hint_level = $element.parent().parent().data("hint_level");
+  if (!hint_level) {
+    hint_level = 1;
+  } else {
+    hint_level += 1;
+  }
+  console.log(hint_level);
   let $output = $element.next(mergedOptions.outputSelector);
   let source = $element.text().trim();
   let renderers = {
@@ -190,24 +204,30 @@ function renderCell(element, options) {
 
   let $cm_element = $("<div class='thebelab-input'>");
   $cell.append($cm_element);
-  $cell.append(
-    $("<button class='thebelab-button thebelab-run-button'>")
-      .text("run")
-      .attr("title", "run this cell")
-      .click(execute)
-  );
-  $cell.append(
-    $("<button class='thebelab-button thebelab-restart-button'>")
-      .text("restart")
-      .attr("title", "restart the kernel")
-      .click(restart)
-  );
-  $cell.append(
-    $("<button class='thebelab-button thebelab-restartall-button'>")
-      .text("restart & run all")
-      .attr("title", "restart the kernel and run all cells")
-      .click(restartAndRunAll)
-  );
+  if (cell_type == "solution_free_code") {
+    $cell.append(
+      $("<button class='btn btn-submit btn-sm mr-2 thebelab-button thebelab-run-button'>")
+        .html('<i class="fa fa-play" style="font-size:20px;"></i>')
+        .attr("title", "run this cell")
+        .click(execute)
+    );
+    $cell.append(
+      $("<button class='btn btn-submit btn-sm mr-2 thebelab-button thebelab-run-button'>")
+        .text("submit")
+        .attr("title", "run this cell")
+        .attr('id', 'submit_button_' + cell_id)
+        .css("display", "None")
+        .click({ question_series: question_series, cell_id: cell_id, hint_level: hint_level }, execute_free_code_cell)
+    );
+  }
+  else {
+    $cell.append(
+      $("<button class='btn btn-success btn-sm mr-2 thebelab-button thebelab-run-button'>")
+        .html('<i class="fa fa-play" style="font-size:20px;"></i>')
+        .attr("title", "run this cell")
+        .click(execute)
+    );
+  }
   let kernelResolve, kernelReject;
   let kernelPromise = new Promise((resolve, reject) => {
     kernelResolve = resolve;
@@ -243,6 +263,7 @@ function renderCell(element, options) {
   function execute() {
     let kernel = $cell.data("kernel");
     let code = cm.getValue();
+    onExecuteCell(code, id);
     if (!kernel) {
       console.debug("No kernel connected");
       setOutputText();
@@ -259,6 +280,45 @@ function renderCell(element, options) {
           text: `Failed to execute. ${error} Please refresh the page.`,
         });
       }
+    });
+    return false;
+  }
+
+  function execute_free_code_cell(event) {
+    document.getElementById('submit_button_' + event.data.cell_id).disabled = true;
+    setTimeout(function () { document.getElementById('submit_button_' + event.data.cell_id).disabled = false; }, 3000);
+
+
+
+    let kernel = $cell.data("kernel");
+    let code = cm.getValue();
+    onExecuteCell(code, id);
+    if (!kernel) {
+      console.debug("No kernel connected");
+      outputArea.model.clear();
+      outputArea.model.add({
+        output_type: "stream",
+        name: "stdout",
+        text: "Waiting for kernel...",
+      });
+      events.trigger("request-kernel");
+    }
+    kernelPromise.then(kernel => {
+      outputArea.future = kernel.requestExecute({ code: code });
+      let submission = {};
+      submission.eventtype = "answer_submission";
+      submission.cell_id = Number(event.data.cell_id);
+      submission.answer = {
+        'code': code
+      };
+
+      submission.question_series = event.data.question_series;
+      submission.cell_type = "solution_free_code";
+      submission.hint_level = hint_level;
+
+      handle_event(submission);
+
+
     });
     return false;
   }
@@ -328,6 +388,11 @@ function renderCell(element, options) {
   }
   return { cell: $cell, execute, setOutputText };
 }
+export function getManager() {
+  return new ThebeManager({
+    loader: requireLoader,
+  });
+}
 
 export function renderAllCells({ selector = _defaultOptions.selector } = {}) {
   // render all elements matching `selector` as cells.
@@ -346,7 +411,7 @@ export function renderAllCells({ selector = _defaultOptions.selector } = {}) {
 
 export function hookupKernel(kernel, cells) {
   // hooks up cells to the kernel
-  cells.map((i, { cell }) => {
+  cells.map((i, cell) => {
     $(cell).data("kernel-promise-resolve")(kernel);
   });
 }
@@ -602,7 +667,7 @@ export function requestBinder({
 
  */
 
-export function bootstrap(options) {
+export function bootstrap(options, cells) {
   // bootstrap thebe on the page
   // merge defaults, pageConfig, etc.
   options = mergeOptions(options);
@@ -618,9 +683,9 @@ export function bootstrap(options) {
   }
 
   // bootstrap thebelab on the page
-  let cells = renderAllCells({
-    selector: options.selector,
-  });
+  // let cells = renderAllCells({
+  //   selector: options.selector,
+  // });
 
   function getKernel() {
     if (options.binderOptions.repo) {
