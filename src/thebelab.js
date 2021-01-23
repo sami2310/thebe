@@ -251,7 +251,7 @@ export function renderCell(element, options, id, onExecuteCell) {
     $output.remove();
   }
 
-  function setOutputText(text = "Waiting for kernel...") {
+  function setOutputText(text = "Initializing Python... This could take about 20s the first time") {
     outputArea.model.clear();
     outputArea.model.add({
       output_type: "stream",
@@ -299,7 +299,7 @@ export function renderCell(element, options, id, onExecuteCell) {
       outputArea.model.add({
         output_type: "stream",
         name: "stdout",
-        text: "Waiting for kernel...",
+        text: "Initializing Python... This could take about 20s the first time",
       });
       events.trigger("request-kernel");
     }
@@ -386,7 +386,7 @@ export function renderCell(element, options, id, onExecuteCell) {
     $cm_element[0].setAttribute("data-readonly", "true");
     $cell.attr("data-readonly", "true");
   }
-  return { cell: $cell, execute, setOutputText };
+  return { cell: $cell, execute, setOutputText, cm: cm };
 }
 export function getManager() {
   return new ThebeManager({
