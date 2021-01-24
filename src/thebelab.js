@@ -411,9 +411,12 @@ export function renderAllCells({ selector = _defaultOptions.selector } = {}) {
 
 export function hookupKernel(kernel, cells) {
   // hooks up cells to the kernel
-  cells.map((i, cell) => {
-    $(cell).data("kernel-promise-resolve")(kernel);
-  });
+  if (typeof (cells) != 'undefined' && cells != null) {
+    cells.map((i, cell) => {
+      $(cell).data("kernel-promise-resolve")(kernel);
+    });
+  }
+
 }
 
 // requesting Kernels
