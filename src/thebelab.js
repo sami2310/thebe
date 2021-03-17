@@ -288,8 +288,7 @@ export function renderCell(element, options, id, onExecuteCell) {
   function execute_free_code_cell(event) {
     document.getElementById('submit_button_' + event.data.cell_id).disabled = true;
     setTimeout(function () { document.getElementById('submit_button_' + event.data.cell_id).disabled = false; }, 3000);
-    document.getElementById("spinner").display = "inline-block";
-
+    document.getElementById("spinner").style.display = "inline-block";
 
     let kernel = $cell.data("kernel");
     let code = cm.getValue();
