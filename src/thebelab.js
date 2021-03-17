@@ -27,6 +27,7 @@ import { requireLoader } from "@jupyter-widgets/html-manager";
 
 import { Mode } from "@jupyterlab/codemirror";
 
+// CSS to remove in the non-css version
 import "@jupyterlab/theme-light-extension/style/index.css";
 import "@jupyter-widgets/controls/css/widgets-base.css";
 import "@jupyterlab/rendermime/style/index.css";
@@ -287,7 +288,7 @@ export function renderCell(element, options, id, onExecuteCell) {
   function execute_free_code_cell(event) {
     document.getElementById('submit_button_' + event.data.cell_id).disabled = true;
     setTimeout(function () { document.getElementById('submit_button_' + event.data.cell_id).disabled = false; }, 3000);
-
+    document.getElementById("spinner").display = "inline-block";
 
 
     let kernel = $cell.data("kernel");
@@ -299,7 +300,7 @@ export function renderCell(element, options, id, onExecuteCell) {
       outputArea.model.add({
         output_type: "stream",
         name: "stdout",
-        text: "Initializing Python... This could take about 20s the first time",
+        text: "Initializing Python...\nThis could take about 30s the first time.\nReload the page if stuck.",
       });
       events.trigger("request-kernel");
     }
