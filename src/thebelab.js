@@ -208,7 +208,9 @@ export function renderCell(element, options, id, onExecuteCell) {
   if (cell_type == "solution_free_code") {
     $cell.append(
       $("<button class='btn btn-submit btn-sm mr-2 thebelab-button thebelab-run-button'>")
-        .html('<i class="fa fa-play" style="font-size:20px;"></i>')
+        // .html('<i class="fa fa-play" style="font-size:20px;"></i>')
+        .html("test")
+        .attr('id', 'test_button_' + cell_id)
         .attr("title", "run this cell")
         .click(execute)
     );
