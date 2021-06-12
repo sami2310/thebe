@@ -226,7 +226,7 @@ export function renderCell(element, options, id, onExecuteCell) {
   else {
     $cell.append(
       $("<button class='btn btn-success btn-sm mr-2 thebelab-button thebelab-run-button'>")
-        .html('<i class="fa fa-play" style="font-size:20px;"></i>')
+        .html('test')
         .attr("title", "run this cell")
         .click(execute)
     );
